@@ -1,0 +1,16 @@
+[Unit]
+Description=oTree Market Experiment
+After=network.target
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/otree-market-experiment
+Environment="OTREE_ADMIN_PASSWORD=CHANGE_ME"
+Environment="OTREE_PRODUCTION=1"
+ExecStart=/usr/local/bin/otree prodserver 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
