@@ -1,0 +1,49 @@
+{{ block title }}
+    Round {{ player.round_number }} of {{ C.NUM_ROUNDS }} - Your Role
+{{ endblock }}
+
+{{ block content }}
+
+<div class="card">
+    <div class="card-body text-center">
+
+        {{ if player.role_assigned == 'buyer' }}
+            <h2 style="color: #2196F3;">You are a BUYER</h2>
+
+            <div class="alert alert-primary" style="font-size: 1.3em;">
+                <strong>Your private value:</strong> {{ player.private_value }} points
+            </div>
+
+            <p>
+                This means the good is worth <strong>{{ player.private_value }} points</strong> to you.
+            </p>
+            <p>
+                If you buy at price P, your profit = {{ player.private_value }} - P
+            </p>
+
+        {{ else }}
+            <h2 style="color: #4CAF50;">You are a SELLER</h2>
+
+            <div class="alert alert-success" style="font-size: 1.3em;">
+                <strong>Your private cost:</strong> {{ player.private_value }} points
+            </div>
+
+            <p>
+                It costs you <strong>{{ player.private_value }} points</strong> to produce the good.
+            </p>
+            <p>
+                If you sell at price P, your profit = P - {{ player.private_value }}
+            </p>
+        {{ endif }}
+
+        <hr>
+        <p class="text-muted">
+            Remember: Only you know your value/cost. Other participants have different values/costs.
+        </p>
+
+    </div>
+</div>
+
+{{ next_button }}
+
+{{ endblock }}

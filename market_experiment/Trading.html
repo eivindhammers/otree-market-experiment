@@ -1,0 +1,50 @@
+{{ block title }}
+    Round {{ player.round_number }} - Submit Your {{ if player.role_assigned == 'buyer' }}Bid{{ else }}Ask{{ endif }}
+{{ endblock }}
+
+{{ block content }}
+
+<div class="card mb-4">
+    <div class="card-body">
+
+        {{ if player.role_assigned == 'buyer' }}
+            <h3 style="color: #2196F3;">You are a BUYER</h3>
+            <p class="lead">Your private value: <strong>{{ player.private_value }} points</strong></p>
+        {{ else }}
+            <h3 style="color: #4CAF50;">You are a SELLER</h3>
+            <p class="lead">Your private cost: <strong>{{ player.private_value }} points</strong></p>
+        {{ endif }}
+
+        <hr>
+
+        <p><strong>{{ action_label }}:</strong></p>
+
+        <div class="input-group mb-3" style="max-width: 300px;">
+            {{ formfield 'bid_or_ask' }}
+            <span class="input-group-text">points</span>
+        </div>
+
+        <p class="text-muted">
+            <em>{{ hint }}</em>
+        </p>
+
+        {{ if player.role_assigned == 'buyer' }}
+            <div class="alert alert-info">
+                <strong>Strategy tip:</strong> Your bid determines whether you trade.
+                A higher bid increases your chance of trading but reduces your profit if you win.
+                You should never bid more than your value ({{ player.private_value }}).
+            </div>
+        {{ else }}
+            <div class="alert alert-info">
+                <strong>Strategy tip:</strong> Your ask determines whether you trade.
+                A lower ask increases your chance of trading but reduces your profit if you sell.
+                You should never ask less than your cost ({{ player.private_value }}).
+            </div>
+        {{ endif }}
+
+    </div>
+</div>
+
+{{ next_button }}
+
+{{ endblock }}

@@ -1,0 +1,217 @@
+{{ block title }}
+    Round {{ player.round_number }} - Market Results
+{{ endblock }}
+
+{{ block styles }}
+<style>
+    .chart-container {
+        width: 100%;
+        max-width: 700px;
+        margin: 0 auto;
+    }
+    .stat-box {
+        text-align: center;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+    .stat-box h4 {
+        margin: 0;
+        font-size: 2em;
+    }
+    .stat-box p {
+        margin: 5px 0 0 0;
+        color: #666;
+    }
+</style>
+{{ endblock }}
+
+{{ block content }}
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="stat-box" style="background: #e3f2fd;">
+            <h4>{{ group.market_price|floatformat:1 }}</h4>
+            <p>Market Price</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-box" style="background: #e8f5e9;">
+            <h4>{{ group.num_trades }}</h4>
+            <p>Trades Executed</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-box" style="background: #fff3e0;">
+            <h4>{{ group.total_surplus|floatformat:1 }}</h4>
+            <p>Total Surplus</p>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>Your Result</h5>
+    </div>
+    <div class="card-body">
+        {{ if player.role_assigned == 'buyer' }}
+            <p>You were a <strong style="color: #2196F3;">BUYER</strong> with value <strong>{{ player.private_value }}</strong></p>
+            <p>You bid: <strong>{{ player.bid_or_ask }}</strong></p>
+        {{ else }}
+            <p>You were a <strong style="color: #4CAF50;">SELLER</strong> with cost <strong>{{ player.private_value }}</strong></p>
+            <p>You asked: <strong>{{ player.bid_or_ask }}</strong></p>
+        {{ endif }}
+
+        {{ if player.traded }}
+            <div class="alert alert-success">
+                <strong>You traded!</strong> at price {{ player.trade_price|floatformat:1 }}<br>
+                Your profit this round: <strong>{{ player.profit|floatformat:1 }} points</strong>
+            </div>
+        {{ else }}
+            <div class="alert alert-secondary">
+                <strong>You did not trade this round.</strong><br>
+                Your profit: 0 points
+            </div>
+        {{ endif }}
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>Market Supply & Demand</h5>
+    </div>
+    <div class="card-body">
+        <div class="chart-container">
+            <canvas id="marketChart"></canvas>
+        </div>
+
+        <div class="mt-3">
+            <p><strong>What this shows:</strong></p>
+            <ul>
+                <li><span style="color: #2196F3;">Blue dashed line</span>: True demand curve (based on private values)</li>
+                <li><span style="color: #4CAF50;">Green dashed line</span>: True supply curve (based on private costs)</li>
+                <li><span style="color: #1565C0;">Blue solid line</span>: Submitted bids (revealed demand)</li>
+                <li><span style="color: #2E7D32;">Green solid line</span>: Submitted asks (revealed supply)</li>
+                <li><span style="color: #F44336;">Red line</span>: Market clearing price</li>
+            </ul>
+            <p class="text-muted">
+                Notice how the submitted bids and asks tend to reveal the underlying supply and demand,
+                allowing the market to find an efficient price even though no one knew the full picture!
+            </p>
+        </div>
+    </div>
+</div>
+
+{{ next_button }}
+
+{{ endblock }}
+
+{{ block scripts }}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const curvesData = js_vars.curves_data;
+    const marketPrice = js_vars.market_price;
+    const numTrades = js_vars.num_trades;
+
+    const ctx = document.getElementById('marketChart').getContext('2d');
+
+    // Prepare datasets
+    const demandData = curvesData.demand.map(d => ({x: d.q, y: d.p}));
+    const supplyData = curvesData.supply.map(d => ({x: d.q, y: d.p}));
+    const bidData = curvesData.bids.map(d => ({x: d.q, y: d.p}));
+    const askData = curvesData.asks.map(d => ({x: d.q, y: d.p}));
+
+    // Find max quantity for the price line
+    const maxQ = Math.max(
+        ...demandData.map(d => d.x),
+        ...supplyData.map(d => d.x)
+    );
+
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            datasets: [
+                {
+                    label: 'True Demand (Values)',
+                    data: demandData,
+                    borderColor: '#2196F3',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    tension: 0
+                },
+                {
+                    label: 'True Supply (Costs)',
+                    data: supplyData,
+                    borderColor: '#4CAF50',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    tension: 0
+                },
+                {
+                    label: 'Submitted Bids',
+                    data: bidData,
+                    borderColor: '#1565C0',
+                    backgroundColor: 'rgba(21, 101, 192, 0.1)',
+                    borderWidth: 3,
+                    pointRadius: 0,
+                    tension: 0,
+                    fill: false
+                },
+                {
+                    label: 'Submitted Asks',
+                    data: askData,
+                    borderColor: '#2E7D32',
+                    backgroundColor: 'rgba(46, 125, 50, 0.1)',
+                    borderWidth: 3,
+                    pointRadius: 0,
+                    tension: 0,
+                    fill: false
+                },
+                {
+                    label: 'Market Price',
+                    data: [{x: 0, y: marketPrice}, {x: maxQ, y: marketPrice}],
+                    borderColor: '#F44336',
+                    backgroundColor: 'transparent',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: {
+                    type: 'linear',
+                    title: {
+                        display: true,
+                        text: 'Quantity'
+                    },
+                    min: 0
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'Price'
+                    },
+                    min: 0,
+                    max: 100
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                },
+                title: {
+                    display: true,
+                    text: 'Market Supply and Demand'
+                }
+            }
+        }
+    });
+</script>
+{{ endblock }}
