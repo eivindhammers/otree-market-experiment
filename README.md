@@ -2,39 +2,53 @@
 
 A double auction market experiment demonstrating how decentralized decisions with private information lead to market equilibrium.
 
-## Deploy to Railway
+## Deployment Options
 
-1. **Create a Railway account** at https://railway.app
+### Option 1: Self-Hosted (with nginx)
 
-2. **Create a new project** from this GitHub repository
+Run on your own server behind nginx.
 
-3. **Add a PostgreSQL database**:
-   - Click "New" → "Database" → "PostgreSQL"
-   - Railway will automatically set the DATABASE_URL
+```bash
+# As root on your server
+git clone https://github.com/eivindhammers/otree-market-experiment.git /opt/otree-market-experiment
+cd /opt/otree-market-experiment
+bash deploy/setup.sh
+```
 
-4. **Set environment variables** (in Settings → Variables):
+Then:
+1. Edit `/etc/systemd/system/otree.service` - set `OTREE_ADMIN_PASSWORD`
+2. Edit `deploy/nginx.conf` - replace `experiment.yourdomain.com` with your domain
+3. Copy nginx config: `cp deploy/nginx.conf /etc/nginx/sites-available/otree`
+4. Enable site: `ln -s /etc/nginx/sites-available/otree /etc/nginx/sites-enabled/`
+5. Start services:
+   ```bash
+   systemctl daemon-reload
+   systemctl enable otree
+   systemctl start otree
+   systemctl reload nginx
+   ```
+
+### Option 2: Railway
+
+1. Create account at https://railway.app
+2. New project → Deploy from GitHub → select this repo
+3. Add PostgreSQL database (New → Database → PostgreSQL)
+4. Set environment variables:
    ```
    OTREE_ADMIN_PASSWORD=your_secure_password
    OTREE_SECRET_KEY=your_random_secret_key
    OTREE_PRODUCTION=1
    ```
-
-5. **Deploy** - Railway will automatically detect the Procfile and deploy
+5. Deploy
 
 ## Running the Experiment
 
-1. Access your Railway URL (e.g., `https://your-app.up.railway.app`)
+1. Go to `https://yourdomain.com/admin` (or your Railway URL)
+2. Login with username `admin` and your password
+3. Create session → "Market Experiment" → set 60-70 participants
+4. Share the session link with students
 
-2. Go to the admin interface: `https://your-app.up.railway.app/admin`
-   - Login with username `admin` and your OTREE_ADMIN_PASSWORD
-
-3. Create a new session:
-   - Select "Market Experiment"
-   - Set number of participants (60-70 for your class)
-
-4. Share the session-wide link with students, or use the "Rooms" feature
-
-## Using Rooms (Recommended for Class)
+### Using Rooms (Recommended for Class)
 
 The experiment includes a pre-configured room called "econ_class":
 
