@@ -1,0 +1,29 @@
+{{ block title }}
+    Sluttresultat
+{{ endblock }}
+
+{{ block global_styles }}
+        <link rel="stylesheet" href="{{ static 'styleResults.css' }}">
+{{ endblock }}
+
+{{ block content }}
+
+    <p>Takk for deltakelsen.</p>
+
+    <p>Du får {{ payoff }}. Dette er utbetalingen fra runde {{ player.selectedRound }}.</p>
+<br>
+
+<h5>Rundedetaljer</h5>
+<table id="periodPayoffTable" align="center">
+    <tr><th style="padding:0 0px 0 15px;">Runde</th><th style="padding:0 0px 0 15px;">Rundeutbetaling</th><th style="padding:0 0px 0 15px;">Handelsgevinst</th><th style="padding:0 0px 0 15px;">Formuesendring (%)</th></tr>
+    {{ for p in periodPayoff }}
+        <tr>
+            {{ for e in p }}
+                <td align="right">{{ e }}</td>
+            {{ endfor }}
+        </tr>
+    {{ endfor }}
+</table>
+
+{{ endblock }}
+

@@ -1,0 +1,71 @@
+{{ block global_scripts }}
+        <script src="{{ static 'script.js' }}"></script>
+{{ endblock }}
+
+{{ block global_styles }}
+        <link rel="stylesheet" href="{{ static 'style.css' }}">
+{{ endblock }}
+
+{{ block title }}
+Kontinuerlig dobbel auksjon - før runden
+{{ endblock }}
+
+{{ block content }}
+<noscript>
+    <div id="jsError">FEIL: Denne siden krever JavaScript.</div>
+</noscript>
+
+<p>Starter snart: {{ if player.round_number <= trialRounds }}prøverunde {{ player.round_number }}{{ else }}runde {{ round }}{{ endif }}.</p>
+
+<div id="endowmentDiv" class="endowment-container row" style="margin-bottom: 35px">
+    <div class="endowment-div col-sm div_box">
+    <table id="endowmentTable">
+    <tr>
+        <th>Din rolle</th>
+        <td id="traderRole">
+            {{ if smithMode }} {{ roleName }} {{ else }} {{ if player.isObserver }} Observatør {{ else }} Handler {{ endif }} {{ endif }}
+        </td>
+    </tr>
+        {{ if not player.isObserver }}
+    <tr>
+        <th>Startbeholdning (eiendel)</th>
+        <td id="assetsHolding">{{ player.assetsHolding }}</td>
+    </tr>
+    <tr> {{ if player.allowShort }}
+        <th>Grense for shortsalg</th>
+        <td id="capShort">
+            {{ player.capShort }}
+        </td>
+        {{ else }} {{ endif }}
+    </tr>
+    <tr>
+        <th>Startbeholdning (kontanter)</th>
+        <td id="cashHolding">{{ player.cashHolding }}</td>
+    </tr>
+    <tr> {{ if player.allowLong }}
+        <th>Kredittgrense</th>
+        <td id="capLong">
+            {{ player.capLong }}
+        </td>
+        {{ else }} {{ endif }}
+    </tr>
+    {{ else }} {{ endif }}
+    </table>
+    </div>
+</div>
+
+{{ if smithMode and privateScheduleRows }}
+<div class="endowment-container row" style="margin-bottom: 25px">
+    <div class="endowment-div col-sm div_box">
+        <table id="privateScheduleTable">
+            <tr><th>Enhet</th><th>{{ if player.roleID == 'buyer' }}Privat verdi{{ else }}Privat kostnad{{ endif }}</th></tr>
+            {{ for unit, amount in privateScheduleRows }}
+            <tr><td>{{ unit }}</td><td>{{ amount }}</td></tr>
+            {{ endfor }}
+        </table>
+    </div>
+</div>
+{{ endif }}
+
+    {{ next_button }}
+{{ endblock }}

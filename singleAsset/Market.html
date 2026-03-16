@@ -1,0 +1,166 @@
+{{ block global_scripts }}
+        <script src="{{ static 'script.js' }}"></script>
+        <script src="{{ static 'scriptMarket.js' }}"></script>
+        <script src="{{ static 'sCDAstatic/scriptSAssetMarket.js' }}"></script>
+        <script src="{{ static 'highcharts/highcharts.js' }}"></script>
+        <script src="{{ static 'highcharts/highcharts_accessibility.js' }}"></script>
+        <script src="{{ static 'chart.js' }}"></script>
+{{ endblock }}
+
+{{ block global_styles }}
+        <link rel="stylesheet" href="{{ static 'style.css' }}">
+{{ endblock }}
+
+{{ block title }}
+Kontinuerlig dobbel auksjon
+{{ endblock }}
+
+{{ block content }}
+<noscript>
+    <div id="jsError">FEIL: Denne siden krever JavaScript.</div>
+</noscript>
+
+<div id="endowmentDiv" class="endowment-container row" style="margin-bottom: 35px">
+    <div class="endowment-div col-sm div_box">
+    <table id="endowmentTable">
+    <tr>
+        <th>Din rolle</th>
+        <td id="traderRole">
+            {{ if smithMode }} {{ roleName }} {{ else }} {{ if player.isObserver }} Observatør {{ else }} Handler {{ endif }} {{ endif }}
+        </td>
+    </tr>
+        {{ if not player.isObserver }}
+    <tr>
+        <th>Eiendeler</th>
+        <td id="assetsHolding">{{ player.assetsHolding }}</td>
+    </tr>
+    <tr> {{ if player.allowShort }}
+        <th>Grense for shortsalg</th>
+        <td id="capShort">
+            {{ player.capShort }}
+        </td>
+        {{ else }} {{ endif }}
+    </tr>
+    <tr>
+        <th>Kontanter</th>
+        <td id="cashHolding">{{ player.cashHolding }}</td>
+    </tr>
+    <tr> {{ if player.allowLong }}
+        <th>Kredittgrense</th>
+        <td id="capLong">{{ player.capLong }}</td>
+        {{ else }} {{ endif }}
+    </tr>
+        {{ else }} {{ endif }}
+    </table>
+    </div>
+</div>
+
+<div class="otree-form-errors alert-info" id="newsBox" style="display: none; text-align: left; margin-top: 35px">
+    <p id="news" style="color: green"></p>
+    <button type="button" id="newsError" class="btn btn-outline-info">OK</button>
+</div>
+
+
+<div class="limit_container row">
+    {{ if not smithMode or player.roleID == 'buyer' }}
+    <div class="limit_bid col-sm div_box">
+        <h4>Legg inn kjøpsordre</h4>
+        <table style="margin: auto">
+            <tr><th>Pris (kjøp)</th><td><input type="number" class="form-control small-numbers" inputmode="numeric" id="limitBidPrice" min="0"></td></tr>
+            <tr><th>Volum</th><td><input type="number" class="form-control small-numbers" inputmode="numeric" id="limitBidVolume" min="1"></td></tr>
+        </table>
+        <button type="button" onclick="sendOffer(is_bid=1)" id="bidOffer" class="otree-btn-next btn btn-primary">Send kjøpsordre</button>
+        <div class="otree-form-errors alert alert-danger" id="errorBidOffer" style="display: none; text-align: left; margin-top: 35px">
+            <p>Fyll inn gyldig pris og volum.</p>
+            <ol>
+                <li>Volum må være et positivt heltall.</li>
+                <li>Pris må være et positivt tall.</li>
+            </ol>
+            <button type="button" id="sendBidError" class="btn btn-outline-danger">OK</button>
+        </div>
+    </div>
+    {{ endif }}
+    {{ if not smithMode or player.roleID == 'seller' }}
+    <div class="limit_ask col-sm div_box">
+        <h4>Legg inn salgsordre</h4>
+        <table style="margin: auto">
+            <tr><th>Pris (salg)</th><td><input type="number" class="form-control small-numbers" inputmode="numeric" id="limitAskPrice" min="0"></td></tr>
+            <tr><th>Volum</th><td><input type="number" class="form-control small-numbers" inputmode="numeric" id="limitAskVolume" min="1"></td></tr>
+        </table>
+        <button type="button" onclick="sendOffer(is_bid=0)" id="SendOffer" class="otree-btn-next btn btn-primary">Send salgsordre</button>
+        <div class="otree-form-errors alert alert-danger" id="errorAskOffer" style="display: none; text-align: left; margin-top: 35px">
+            <p>Fyll inn gyldig pris og volum.</p>
+            <ol>
+                <li>Volum må være et positivt heltall.</li>
+                <li>Pris må være et positivt tall.</li>
+            </ol>
+            <button type="button" id="sendAskError" class="btn btn-outline-danger">OK</button>
+        </div>
+    </div>
+    {{ endif }}
+</div>
+
+<div class="market_table row">
+    {{ if not smithMode or player.roleID == 'seller' }}
+    <div class="market_bid col-sm div_box">
+        <h4>Kjøpsordrer</h4>
+        <p style="text-align: center">Velg en ordre og oppgi volum du vil selge.</p>
+        <input type="number" class="form-control small-numbers" inputmode="numeric" id="transactionBidVolume" min="1" style="display: inline-block;">
+        <button type="button" onclick="sendAcc(is_bid=1)" id="bidAccept" class="otree-btn-next btn btn-primary">Godta salg</button>
+        <table id="bidsTable" class="table_box"><thead><tr><th>Volum</th><th>Pris</th></tr></thead><tbody></tbody></table>
+        <button type="button" onclick="cancelLimit(is_bid=1)" id="cancelBidLimit" class="btn btn-outline-danger">Trekk egen ordre</button>
+        <div class="otree-form-errors alert alert-danger" id="errorBidMarket" style="display: none; text-align: left; margin-top: 35px;">
+            <p>Ugyldig valg for gjennomføring.</p>
+            <ol>
+                <li>Velg en gyldig ordre.</li>
+                <li>Du kan ikke handle mot egen ordre.</li>
+                <li>Velg beste tilgjengelige pris (øverst).</li>
+                <li>Volum må være et positivt heltall.</li>
+            </ol>
+            <button type="button" id="accBidError" class="btn btn-outline-danger">OK</button>
+        </div>
+        <div class="otree-form-errors alert alert-danger" id="errorBidCancel" style="display: none; text-align: left; margin-top: 35px;">
+            <p>Velg en av dine egne kjøpsordrer før du trekker den.</p>
+            <button type="button" id="cancelBidError" class="btn btn-outline-danger">OK</button>
+        </div>
+    </div>
+    {{ endif }}
+    {{ if not smithMode or player.roleID == 'buyer' }}
+    <div class="market_ask col-sm div_box">
+        <h4>Salgsordrer</h4>
+        <p style="text-align: center">Velg en ordre og oppgi volum du vil kjøpe.</p>
+        <input type="number" class="form-control small-numbers" inputmode="numeric" id="transactionAskVolume" min="1" style="display: inline-block">
+        <button type="button" onclick="sendAcc(is_bid=0)" id="askAccept" class="otree-btn-next btn btn-primary">Godta kjøp</button>
+        <table id="asksTable" class="table_box"><thead><tr><th>Volum</th><th>Pris</th></tr></thead><tbody></tbody></table>
+        <button type="button" onclick="cancelLimit(is_bid=0)" id="cancelAskLimit" class="btn btn-outline-danger">Trekk egen ordre</button>
+        <div class="otree-form-errors alert alert-danger" id="errorAskMarket" style="display: none; text-align: left; margin-top: 35px">
+            <p>Ugyldig valg for gjennomføring.</p>
+            <ol>
+                <li>Velg en gyldig ordre.</li>
+                <li>Du kan ikke handle mot egen ordre.</li>
+                <li>Velg beste tilgjengelige pris (øverst).</li>
+                <li>Volum må være et positivt heltall.</li>
+            </ol>
+            <button type="button" id="accAskError" class="btn btn-outline-danger">OK</button>
+        </div>
+        <div class="otree-form-errors alert alert-danger" id="errorAskCancel" style="display: none; text-align: left; margin-top: 35px;">
+            <p>Velg en av dine egne salgsordrer før du trekker den.</p>
+            <button type="button" id="cancelAskError" class="btn btn-outline-danger">OK</button>
+        </div>
+    </div>
+    {{ endif }}
+</div>
+
+<div id="highchart" class="div_box"></div>
+
+<div class="trades_container div_box alert-success">
+    <h4>Handler</h4>
+    <table id="tradesTable" class="table_box"></table>
+</div>
+
+<div class="news_container div_box alert-warning">
+    <h4>Meldinger</h4>
+    <table id="newsTable" class="table_box"></table>
+</div>
+
+{{ endblock }}
