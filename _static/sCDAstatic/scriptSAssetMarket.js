@@ -1,8 +1,25 @@
 
     let assetsHolding = js_vars.assetsHolding
+    let initialAssets = js_vars.initialAssets !== undefined ? js_vars.initialAssets : 0
 
     let elTradesTable = $('#tradesTable')
     let elAssetsHolding = $('#assetsHolding')
+
+    function highlightNextUnit() {
+        let currentAssets = parseInt($('#assetsHolding').text())
+        if (isNaN(currentAssets)) currentAssets = initialAssets
+        let nextUnit = currentAssets - initialAssets + 1
+        $('#privateScheduleTable tr').removeClass('table-active table-secondary')
+        $('#privateScheduleTable tr[data-unit]').each(function() {
+            let unit = parseInt($(this).attr('data-unit'))
+            if (unit < nextUnit) {
+                $(this).addClass('table-secondary')
+            } else if (unit === nextUnit) {
+                $(this).addClass('table-active')
+            }
+        })
+    }
+    highlightNextUnit()
 
 
     function liveRecv(data) {
@@ -47,6 +64,8 @@
         updateTableWidth()
 
         redrawChart(highcharts_series)
+
+        highlightNextUnit()
     }
 
 

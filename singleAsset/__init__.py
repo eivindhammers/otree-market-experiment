@@ -603,6 +603,29 @@ def limit_order(player: Player, data):
             msgTime=round(float(time.time() - player.group.marketStartTime), C.decimals)
         )
         return
+    if is_smith_mode(group.session):
+        smith_units = get_smith_units_per_trader(group.session)
+        if is_bid:
+            open_buys = Limit.filter(group=group, makerID=maker_id, isBid=True, isActive=True)
+            units_open = sum(int(o.remainingVolume) for o in open_buys)
+            units_bought = player.assetsHolding - player.initialAssets
+            if units_bought + units_open + limit_volume > smith_units:
+                News.create(
+                    player=player, playerID=maker_id, group=group, Period=period,
+                    msg=f'Ordre avvist: du kan maks kjøpe {smith_units} enheter totalt.',
+                    msgTime=round(float(time.time() - player.group.marketStartTime), C.decimals)
+                )
+                return
+        else:
+            units_sold = player.initialAssets - player.assetsHolding
+            units_open = player.assetsOffered
+            if units_sold + units_open + limit_volume > smith_units:
+                News.create(
+                    player=player, playerID=maker_id, group=group, Period=period,
+                    msg=f'Ordre avvist: du kan maks selge {smith_units} enheter totalt.',
+                    msgTime=round(float(time.time() - player.group.marketStartTime), C.decimals)
+                )
+                return
     if is_bid and player.cashHolding + player.capLong - player.cashOffered - limit_volume * price < 0:
         News.create(
             player=player,
@@ -906,6 +929,28 @@ def transaction(player: Player, data):
                 msgTime=round(float(time.time() - player.group.marketStartTime), C.decimals)
             )
             return
+        smith_units = get_smith_units_per_trader(group.session)
+        if not is_bid:  # taker is buying (accepting a sell order)
+            open_buys = Limit.filter(group=group, makerID=taker_id, isBid=True, isActive=True)
+            units_open = sum(int(o.remainingVolume) for o in open_buys)
+            units_bought = player.assetsHolding - player.initialAssets
+            if units_bought + units_open + transaction_volume > smith_units:
+                News.create(
+                    player=player, playerID=taker_id, group=group, Period=period,
+                    msg=f'Ordre avvist: du kan maks kjøpe {smith_units} enheter totalt.',
+                    msgTime=round(float(time.time() - player.group.marketStartTime), C.decimals)
+                )
+                return
+        else:  # taker is selling (accepting a buy order)
+            units_sold = player.initialAssets - player.assetsHolding
+            units_open = player.assetsOffered
+            if units_sold + units_open + transaction_volume > smith_units:
+                News.create(
+                    player=player, playerID=taker_id, group=group, Period=period,
+                    msg=f'Ordre avvist: du kan maks selge {smith_units} enheter totalt.',
+                    msgTime=round(float(time.time() - player.group.marketStartTime), C.decimals)
+                )
+                return
     if not (price > 0 and transaction_volume > 0): # check whether data is valid
         News.create(
             player=player,
@@ -1098,6 +1143,8 @@ class BidAsks(ExtraModel):
 class Instructions(Page):
     form_model = 'player'
     form_fields = ['isParticipating']
+    timeout_seconds = 300
+    timeout_submission = {'isParticipating': True}
 
     @staticmethod
     def is_displayed(player: Player):
@@ -1130,6 +1177,7 @@ class WaitToStart(WaitPage):
 
 class EndOfTrialRounds(Page):
     template_name = "_templates/endOfTrialRounds.html"
+    timeout_seconds = 60
 
     @staticmethod
     def is_displayed(player: Player):
@@ -1138,6 +1186,8 @@ class EndOfTrialRounds(Page):
 
 
 class PreMarket(Page):
+    timeout_seconds = 120
+
     @staticmethod
     def is_displayed(player: Player):
         return player.isParticipating == 1
@@ -1192,14 +1242,18 @@ class Market(Page):
             cashHolding=player.cashHolding,
             assetsHolding=player.assetsHolding,
             marketTime=group.marketTime,
+            initialAssets=player.initialAssets,
         )
 
     @staticmethod
     def vars_for_template(player: Player):
         role_name = 'Kjøper' if player.roleID == 'buyer' else 'Selger' if player.roleID == 'seller' else 'Handler'
+        private_schedule = get_private_schedule(player=player)
+        private_schedule_rows = list(enumerate(private_schedule, start=1))
         return dict(
             smithMode=is_smith_mode(player.session),
             roleName=role_name,
+            privateScheduleRows=private_schedule_rows,
         )
 
     @staticmethod

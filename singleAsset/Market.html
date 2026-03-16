@@ -55,6 +55,25 @@ Kontinuerlig dobbel auksjon
     </div>
 </div>
 
+{{ if smithMode and privateScheduleRows }}
+<div class="endowment-container row" style="margin-bottom: 25px">
+    <div class="endowment-div col-sm div_box">
+        <table id="privateScheduleTable">
+            <tr>
+                <th>Enhet</th>
+                <th id="privateScheduleHeader">{{ if player.roleID == 'buyer' }}Privat verdi{{ else }}Privat kostnad{{ endif }}</th>
+            </tr>
+            {{ for unit, amount in privateScheduleRows }}
+            <tr data-unit="{{ unit }}">
+                <td>{{ unit }}</td>
+                <td>{{ amount }}</td>
+            </tr>
+            {{ endfor }}
+        </table>
+    </div>
+</div>
+{{ endif }}
+
 <div class="otree-form-errors alert-info" id="newsBox" style="display: none; text-align: left; margin-top: 35px">
     <p id="news" style="color: green"></p>
     <button type="button" id="newsError" class="btn btn-outline-info">OK</button>
