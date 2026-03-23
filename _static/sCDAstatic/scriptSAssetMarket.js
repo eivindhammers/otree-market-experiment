@@ -1,6 +1,8 @@
 
     let assetsHolding = js_vars.assetsHolding
     let initialAssets = js_vars.initialAssets !== undefined ? js_vars.initialAssets : 0
+    let prevNewsCount = 0
+    let serverRejectTimer = null
 
     let elTradesTable = $('#tradesTable')
     let elAssetsHolding = $('#assetsHolding')
@@ -39,6 +41,14 @@
         elTradesTable.html(trades.map(e => `<tr><td>${trade_desc(e[3])}&nbsp;</td><td> ${ e[1] } stk for&nbsp;</td><td> ${ cu(e[0]) } </td></tr>`).join(''))
         elNewsTable.html(news.map(e => `<tr><td>${e[0]}</td></tr>`).join(''))
 
+        if (news.length > prevNewsCount && news.length > 0) {
+            clearTimeout(serverRejectTimer)
+            $('#serverRejectMsg').text(news[0][0])
+            $('#serverRejectBox').stop(true).show()
+            serverRejectTimer = setTimeout(() => $('#serverRejectBox').fadeOut(400), 5000)
+        }
+        prevNewsCount = news.length
+
         // Select others' Bids and Asks after this update
         $('#bidsTable tbody tr, #asksTable tbody tr').addClass('btn-outline-primary')
         // Select the own Bids and Asks after this update
@@ -73,13 +83,10 @@
     function sendOffer(is_bid) {
         let errorField = (is_bid == 0) ? $('#errorAskOffer') : $('#errorBidOffer')
         let limitPrice = (is_bid == 0) ? $('#limitAskPrice').val() : $('#limitBidPrice').val()
-        let limitVolume = (is_bid == 0) ? $('#limitAskVolume').val() : $('#limitBidVolume').val()
+        let limitVolume = 1
         if (limitPrice == undefined || limitPrice <= 0 ) {
             errorField.css("display", "inline-block")
             return // If you care about misspecified orders in your data, you may uncomment the return, it will be pushed back by the server
-        }
-        if (! checkVolume(errorField, limitVolume)) {
-            return
         }
         liveSend({'operationType': 'limit_order', 'isBid': is_bid, 'limitPrice': limitPrice, 'limitVolume': limitVolume})
     }
@@ -103,10 +110,7 @@
             errorField.css("display", "inline-block")
             return
         }
-        let transactionVolume = (is_bid == 0)? $('#transactionAskVolume').val() : $('#transactionBidVolume').val()
-        if (! checkVolume(errorField, transactionVolume)){
-            return
-        }
+        let transactionVolume = 1
         res = [ offerID, transactionPrice, transactionVolume ]
         if (res === undefined) {
             errorField.css("display", "inline-block")
