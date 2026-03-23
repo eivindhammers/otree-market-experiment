@@ -82,7 +82,7 @@ def load_schedules_from_settings():
     try:
         import importlib.util
         spec = importlib.util.spec_from_file_location('settings', 'settings.py')
-        mod = importlib.util.load_from_spec(spec)
+        mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
         configs = getattr(mod, 'SESSION_CONFIGS', [])
         for cfg in configs:
