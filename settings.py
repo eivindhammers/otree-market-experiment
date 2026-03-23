@@ -19,6 +19,7 @@ SESSION_CONFIGS = [
         smith_buyer_values=[[110, 95, 80, 65], [105, 90, 75, 60], [100, 85, 70, 55]],
         smith_seller_costs=[[25, 40, 55, 70], [30, 45, 60, 75], [35, 50, 65, 80]],
         fixed_asset_value=0,
+        thanks_message='Takk for deltakelsen! Vennligst gå tilbake til eksperimentlederen for utbetaling.',
     ),
 ]
 

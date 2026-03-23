@@ -1446,4 +1446,17 @@ class FinalResults(Page):
         )
 
 
-page_sequence = [Instructions, WaitToStart, EndOfTrialRounds, WaitingMarket, Market, ResultsWaitPage, Results, FinalResults, ResultsWaitPage]
+class Goodbye(Page):
+    @staticmethod
+    def is_displayed(player: Player):
+        total_rounds = get_num_total_rounds(player.session)
+        return player.round_number == total_rounds and player.isParticipating == 1
+
+    @staticmethod
+    def vars_for_template(player: Player):
+        return dict(
+            thanksMessage=player.session.config.get('thanks_message', 'Takk for deltakelsen!'),
+        )
+
+
+page_sequence = [Instructions, WaitToStart, EndOfTrialRounds, WaitingMarket, Market, ResultsWaitPage, Results, FinalResults, ResultsWaitPage, Goodbye]
