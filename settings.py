@@ -2,20 +2,6 @@ from os import environ
 
 SESSION_CONFIGS = [
     dict(
-        name='smith1962_lite',
-        display_name='Smith 1962 lite: single-market classroom version',
-        app_sequence=['singleAsset'],
-        num_demo_participants=4,
-        market_time=180,
-        randomise_types=False,
-        short_selling=False,
-        margin_buying=False,
-        num_trial_rounds=0,
-        fixed_asset_value=55,
-        fixed_initial_assets=25,
-        fixed_initial_cash=1375,
-    ),
-    dict(
         name='smith1962_induced',
         display_name='Smith 1962: induced demand/supply (buyers vs sellers)',
         app_sequence=['singleAsset'],
@@ -44,6 +30,14 @@ SESSION_CONFIGS = [
 SESSION_CONFIG_DEFAULTS = dict(
     real_world_currency_per_point=1.00, participation_fee=0.00, doc=""
 )
+
+ROOMS = [
+    dict(
+        name='markedseksperiment',
+        display_name='Markedseksperiment',
+        # participant_label_file='_rooms/participants.txt',  # optional: pre-set participant labels
+    ),
+]
 
 PARTICIPANT_FIELDS = ['roleID', 'isObserver', 'isParticipating', 'informed']
 SESSION_FIELDS = ['numParticipants']
