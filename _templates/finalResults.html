@@ -10,12 +10,14 @@
 
     <p>Takk for deltakelsen.</p>
 
-    <p>Du får {{ payoff }}. Dette er utbetalingen fra runde {{ player.selectedRound }}.</p>
-<br>
-
+{{ if smithMode }}
 <h5>Rundedetaljer</h5>
 <table id="periodPayoffTable" align="center">
-    <tr><th style="padding:0 0px 0 15px;">Runde</th><th style="padding:0 0px 0 15px;">Rundeutbetaling</th><th style="padding:0 0px 0 15px;">Handelsgevinst</th><th style="padding:0 0px 0 15px;">Formuesendring (%)</th></tr>
+    <tr>
+        <th style="padding:0 15px 0 15px;">Runde</th>
+        <th style="padding:0 15px 0 15px;">Handelsgevinst</th>
+        <th style="padding:0 15px 0 15px;">Akkumulert gevinst</th>
+    </tr>
     {{ for p in periodPayoff }}
         <tr>
             {{ for e in p }}
@@ -24,6 +26,27 @@
         </tr>
     {{ endfor }}
 </table>
+{{ else }}
+    <p>Du får {{ payoff }}. Dette er utbetalingen fra runde {{ selectedRound }}.</p>
+<br>
+
+<h5>Rundedetaljer</h5>
+<table id="periodPayoffTable" align="center">
+    <tr>
+        <th style="padding:0 15px 0 15px;">Runde</th>
+        <th style="padding:0 15px 0 15px;">Rundeutbetaling</th>
+        <th style="padding:0 15px 0 15px;">Handelsgevinst</th>
+        <th style="padding:0 15px 0 15px;">Formuesendring (%)</th>
+    </tr>
+    {{ for p in periodPayoff }}
+        <tr>
+            {{ for e in p }}
+                <td align="right">{{ e }}</td>
+            {{ endfor }}
+        </tr>
+    {{ endfor }}
+</table>
+{{ endif }}
 
 {{ endblock }}
 

@@ -9,7 +9,7 @@ class C(BaseConstants):
     NAME_IN_URL = 'sCDA'
     PLAYERS_PER_GROUP = None
     num_trial_rounds = 1
-    NUM_ROUNDS = 3  ## incl. trial periods
+    NUM_ROUNDS = 10  ## incl. trial periods
     base_payment = cu(25)
     multiplier = 90
     min_payment_in_round = cu(0)
@@ -162,10 +162,32 @@ def initiate_group(group: Group):
     assign_types(group=group)
 
 
+def get_market_time_for_round(round_number, trial_rounds):
+    payoff_round = round_number - trial_rounds
+    if payoff_round <= 1:
+        return 180
+    elif payoff_round <= 4:
+        return 120
+    else:
+        return 90
+
+
+def get_results_timeout(player):
+    trial_rounds = get_num_trial_rounds(player.session)
+    payoff_round = player.round_number - trial_rounds
+    if payoff_round <= 1:
+        return 30
+    elif payoff_round <= 4:
+        return 20
+    else:
+        return 10
+
+
 def get_max_time(group: Group):
     # this code is run at the WaitingMarket page just before the market page when all participants arrived
     # this function returns the duration time of a market.
-    return group.session.config['market_time']  # currently the binary value is retrieved from the config variables
+    trial_rounds = get_num_trial_rounds(group.session)
+    return get_market_time_for_round(group.round_number, trial_rounds)
 
 
 def get_num_trial_rounds(session):
@@ -315,6 +337,35 @@ def get_private_schedule(player: Player):
     if player.roleID == 'seller':
         return player.participant.vars.get('smith_costs', [])
     return []
+
+
+def get_smith_trade_table(player: Player):
+    """Returns list of (unit, price, cost_or_value, profit, cumulative_profit) for Smith mode results."""
+    schedule = get_private_schedule(player)
+    if not schedule:
+        return []
+    group = player.group
+    player_id = player.id_in_group
+    if player.roleID == 'buyer':
+        trades = sorted(Transaction.filter(group=group, buyerID=player_id), key=lambda t: t.transactionTime)
+    elif player.roleID == 'seller':
+        trades = sorted(Transaction.filter(group=group, sellerID=player_id), key=lambda t: t.transactionTime)
+    else:
+        return []
+    rows = []
+    unit_idx = 0
+    cumulative = 0.0
+    for tx in trades:
+        for _ in range(int(tx.transactionVolume)):
+            if unit_idx >= len(schedule):
+                break
+            price = round(float(tx.price), C.decimals)
+            sched_val = schedule[unit_idx]
+            profit = round(price - sched_val, C.decimals) if player.roleID == 'seller' else round(sched_val - price, C.decimals)
+            cumulative = round(cumulative + profit, C.decimals)
+            rows.append((unit_idx + 1, price, sched_val, profit, cumulative))
+            unit_idx += 1
+    return rows
 
 
 def initiate_player(player: Player):
@@ -623,6 +674,25 @@ def limit_order(player: Player, data):
                 News.create(
                     player=player, playerID=maker_id, group=group, Period=period,
                     msg=f'Ordre avvist: du kan maks selge {smith_units} enheter totalt.',
+                    msgTime=round(float(time.time() - player.group.marketStartTime), C.decimals)
+                )
+                return
+            costs = player.participant.vars.get('smith_costs', [])
+            next_unit_idx = units_sold + units_open
+            if next_unit_idx < len(costs) and price < costs[next_unit_idx]:
+                News.create(
+                    player=player, playerID=maker_id, group=group, Period=period,
+                    msg=f'Ordre avvist: pris må være minst {costs[next_unit_idx]} (kostnad for neste enhet).',
+                    msgTime=round(float(time.time() - player.group.marketStartTime), C.decimals)
+                )
+                return
+        if is_bid:
+            values = player.participant.vars.get('smith_values', [])
+            next_unit_idx = units_bought + units_open
+            if next_unit_idx < len(values) and price > values[next_unit_idx]:
+                News.create(
+                    player=player, playerID=maker_id, group=group, Period=period,
+                    msg=f'Ordre avvist: pris kan ikke overstige {values[next_unit_idx]} (verdi for neste enhet).',
                     msgTime=round(float(time.time() - player.group.marketStartTime), C.decimals)
                 )
                 return
@@ -951,6 +1021,25 @@ def transaction(player: Player, data):
                     msgTime=round(float(time.time() - player.group.marketStartTime), C.decimals)
                 )
                 return
+            costs = player.participant.vars.get('smith_costs', [])
+            next_unit_idx = units_sold
+            if next_unit_idx < len(costs) and price < costs[next_unit_idx]:
+                News.create(
+                    player=player, playerID=taker_id, group=group, Period=period,
+                    msg=f'Ordre avvist: pris må være minst {costs[next_unit_idx]} (kostnad for neste enhet).',
+                    msgTime=round(float(time.time() - player.group.marketStartTime), C.decimals)
+                )
+                return
+        if not is_bid:  # taker is buying
+            values = player.participant.vars.get('smith_values', [])
+            next_unit_idx = units_bought
+            if next_unit_idx < len(values) and price > values[next_unit_idx]:
+                News.create(
+                    player=player, playerID=taker_id, group=group, Period=period,
+                    msg=f'Ordre avvist: pris kan ikke overstige {values[next_unit_idx]} (verdi for neste enhet).',
+                    msgTime=round(float(time.time() - player.group.marketStartTime), C.decimals)
+                )
+                return
     if not (price > 0 and transaction_volume > 0): # check whether data is valid
         News.create(
             player=player,
@@ -1143,7 +1232,7 @@ class BidAsks(ExtraModel):
 class Instructions(Page):
     form_model = 'player'
     form_fields = ['isParticipating']
-    timeout_seconds = 300
+    timeout_seconds = 120
     timeout_submission = {'isParticipating': True}
 
     @staticmethod
@@ -1163,6 +1252,12 @@ class Instructions(Page):
 
 
 class WaitToStart(WaitPage):
+    @staticmethod
+    def is_displayed(player: Player):
+        if player.round_number == 1:
+            return True
+        return player.in_round(player.round_number - 1).isParticipating == 1
+
     @staticmethod
     def after_all_players_arrive(group: Group):
         group.randomisedTypes = random_types(group=group)
@@ -1186,11 +1281,16 @@ class EndOfTrialRounds(Page):
 
 
 class PreMarket(Page):
-    timeout_seconds = 120
+    timeout_seconds = 45
 
     @staticmethod
     def is_displayed(player: Player):
         return player.isParticipating == 1
+
+    @staticmethod
+    def before_next_page(player: Player, timeout_happened):
+        if timeout_happened:
+            player.isParticipating = False
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -1217,6 +1317,10 @@ class PreMarket(Page):
 
 
 class WaitingMarket(WaitPage):
+    @staticmethod
+    def is_displayed(player: Player):
+        return player.isParticipating == 1
+
     @staticmethod
     def after_all_players_arrive(group: Group):
         group.marketStartTime = round(float(time.time()), C.decimals)
@@ -1286,8 +1390,14 @@ class Results(Page):
         return player.isParticipating == 1
 
     @staticmethod
+    def get_timeout_seconds(player: Player):
+        return get_results_timeout(player)
+
+    @staticmethod
     def vars_for_template(player: Player):
         smith_mode = is_smith_mode(player.session)
+        trade_table = get_smith_trade_table(player) if smith_mode else []
+        schedule_label = 'Verdi' if player.roleID == 'buyer' else 'Kostnad'
         return dict(
             assetValue=round(player.assetValue, C.decimals),
             initialEndowment=round(player.initialEndowment, C.decimals),
@@ -1296,6 +1406,8 @@ class Results(Page):
             wealthChange=round(player.wealthChange*100, C.decimals),
             payoff=cu(round(player.payoff, C.decimals)),
             smithMode=smith_mode,
+            smithTradeTable=trade_table,
+            scheduleLabel=schedule_label,
         )
 
     @staticmethod
@@ -1316,10 +1428,22 @@ class FinalResults(Page):
     @staticmethod
     def vars_for_template(player: Player):
         trial_rounds = get_num_trial_rounds(player.session)
+        smith_mode = is_smith_mode(player.session)
+        cumulative = 0.0
+        period_data = []
+        for p in player.in_all_rounds():
+            if p.round_number > trial_rounds:
+                cumulative = round(cumulative + float(p.tradingProfit), C.decimals)
+                if smith_mode:
+                    period_data.append([p.round_number - trial_rounds, round(p.tradingProfit, C.decimals), cumulative])
+                else:
+                    period_data.append([p.round_number - trial_rounds, round(p.payoff, C.decimals), round(p.tradingProfit, C.decimals), round(p.wealthChange * 100, C.decimals)])
         return dict(
             payoff=cu(round(player.finalPayoff, 0)),
-            periodPayoff=[[p.round_number - trial_rounds, round(p.payoff, C.decimals), round(p.tradingProfit, C.decimals), round(p.wealthChange * 100, C.decimals)] for p in player.in_all_rounds() if p.round_number > trial_rounds],
+            selectedRound=player.selectedRound,
+            smithMode=smith_mode,
+            periodPayoff=period_data,
         )
 
 
-page_sequence = [Instructions, WaitToStart, EndOfTrialRounds, PreMarket, WaitingMarket, Market, ResultsWaitPage, Results, FinalResults, ResultsWaitPage]
+page_sequence = [Instructions, WaitToStart, EndOfTrialRounds, WaitingMarket, Market, ResultsWaitPage, Results, FinalResults, ResultsWaitPage]
